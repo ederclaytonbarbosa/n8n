@@ -1,7 +1,3 @@
-# Mapeia o PVC para /var/lib/postgresql/data
-# Postgres usará /var/lib/postgresql/data/n8n-data (que ainda NÃO existe)
-# Ele criará esse subdiretório novo e inicializa perfeito
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,22 +14,34 @@ spec:
         app: postgres
     spec:
       containers:
-      - name: postgres
-        image: postgres:latest
-        args: ["-c", "max_connections=300"]  
-        env:
-        - name: POSTGRES_DB
-          value: admin
-        - name: POSTGRES_USER
-          value: postgres
-        - name: POSTGRES_PASSWORD
-          value: superSenhaAdmin
-        - name: PGDATA
-          value: /var/lib/postgresql/data/n8n-data
-        volumeMounts:
-        - name: postgres-storage
-          mountPath: /var/lib/postgresql/data  # <<--- VOLUME vai para o diretório base!
+        - name: postgres
+          image: postgres:16
+          args: ["-c", "max_connections=300"]
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: postgres-database
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: postgres-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/n8n-data
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
       volumes:
-      - name: postgres-storage
-        persistentVolumeClaim:
-          claimName: postgres-pvc
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
